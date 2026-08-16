@@ -1,0 +1,10 @@
+# Netlify 部署配置
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# SPA 兜底：所有路径回退到 index.html（本项目为单页应用，无前端路由，此规则仅保险）
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
