@@ -77,14 +77,20 @@ src/
 
 ## 🔑 兼容的 API 示例
 
+> 💠 **默认预设：AQUA 公益AI**（`https://api.ltzy.top/v1`）——公益免费服务，兼容 OpenAI / Anthropic / Gemini 协议。
+> 在控制台 <https://acu.ltzy.top> 的「密钥管理」创建 API Key；模型列表见「模型列表」页，也可在游戏 API 设置里点「📚 获取可用模型」直接拉取（`GET /v1/models` 无需认证）。
+
 | 服务 | Base URL | Model |
 |---|---|---|
+| 💠 **AQUA 公益AI**（默认） | `https://api.ltzy.top/v1` | `minimaxai/minimax-m3`、`deepseek-ai/deepseek-v4-pro` |
 | OpenAI | `https://api.openai.com/v1` | `gpt-4o` |
 | DeepSeek | `https://api.deepseek.com/v1` | `deepseek-chat` |
 | 硅基流动 | `https://api.siliconflow.cn/v1` | `Qwen/Qwen2.5-7B-Instruct` |
 | Moonshot | `https://api.moonshot.cn/v1` | `moonshot-v1-8k` |
 | OpenRouter | `https://openrouter.ai/api/v1` | `openrouter/auto` |
 | Ollama（本地） | `http://localhost:11434/v1` | `llama3.1:8b` |
+
+**错误码参考**：200 成功 · 401 Key 无效 · 403 IP 被封禁/触发风控 · 429 请求频繁 · 500 服务器错误。
 
 > ⚠ 浏览器直连某些服务可能受 CORS 限制；若报网络错误，可改用允许跨域的服务、本地 Ollama，或将应用跑在本地（`npm run dev`）后访问 `localhost`。
 

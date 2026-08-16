@@ -1,13 +1,15 @@
 /**
  * API 设置弹窗（最高优先级功能）
+ * - 预设服务一键填充（AQUA 公益AI / OpenAI / DeepSeek / Ollama）
  * - Base URL / Key / Model / Temperature / Max Tokens
+ * - 获取可用模型列表（GET /v1/models，AQUA 文档：无需认证也可访问）
  * - 连通性测试
  * - 引擎模式（自动 / 强制 LLM / 本地推演）与叙事详细度
  * 密钥仅存浏览器 localStorage。
  */
 import React, { useEffect, useState } from 'react';
-import { MODEL_SUGGESTIONS, useApiStore } from '../store/useApiStore';
-import { normalizeBaseUrl } from '../lib/ai-client';
+import { MODEL_SUGGESTIONS, SERVICE_PRESETS, useApiStore } from '../store/useApiStore';
+import { fetchModels, normalizeBaseUrl } from '../lib/ai-client';
 import { Card, Chip, SectionTitle } from './ui';
 
 export default function ApiSettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -18,6 +20,12 @@ export default function ApiSettingsModal({ open, onClose }: { open: boolean; onC
   const [temperature, setTemperature] = useState(config.temperature);
   const [maxTokens, setMaxTokens] = useState(config.maxTokens);
 
+  // 模型列表获取状态
+  const [models, setModels] = useState<string[] | null>(null);
+  const [modelsLoading, setModelsLoading] = useState(false);
+  const [modelsError, setModelsError] = useState('');
+  const [modelFilter, setModelFilter] = useState('');
+
   useEffect(() => {
     if (open) {
       setBaseUrl(config.baseUrl);
@@ -25,6 +33,9 @@ export default function ApiSettingsModal({ open, onClose }: { open: boolean; onC
       setModel(config.model);
       setTemperature(config.temperature);
       setMaxTokens(config.maxTokens);
+      setModels(null);
+      setModelsError('');
+      setModelFilter('');
     }
   }, [open, config]);
 
@@ -33,6 +44,37 @@ export default function ApiSettingsModal({ open, onClose }: { open: boolean; onC
   const saveAll = () => {
     setConfig({ baseUrl: normalizeBaseUrl(baseUrl), apiKey, model, temperature, maxTokens });
   };
+
+  /** 应用预设服务 */
+  const applyPreset = (preset: (typeof SERVICE_PRESETS)[number]) => {
+    setBaseUrl(preset.baseUrl);
+    setModel(preset.model);
+    setModels(null);
+    setModelsError('');
+    setModelFilter('');
+  };
+
+  /** 获取可用模型列表 */
+  const loadModels = async () => {
+    setModelsLoading(true);
+    setModelsError('');
+    setModels(null);
+    try {
+      const list = await fetchModels({ baseUrl: normalizeBaseUrl(baseUrl), apiKey, model, temperature, maxTokens });
+      setModels(list);
+      if (list.length > 0 && !list.includes(model)) {
+        // 不自动改当前选择，仅展示
+      }
+    } catch (err) {
+      setModelsError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setModelsLoading(false);
+    }
+  };
+
+  const filteredModels = models
+    ? models.filter(m => m.toLowerCase().includes(modelFilter.trim().toLowerCase()))
+    : [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/40 backdrop-blur-sm p-4" onClick={onClose}>
@@ -46,19 +88,36 @@ export default function ApiSettingsModal({ open, onClose }: { open: boolean; onC
           />
 
           <div className="space-y-4">
+            {/* 预设服务 */}
+            <div>
+              <label className="block text-[12px] font-semibold tracking-widest text-steel mb-1.5">⚡ 预设服务（一键填充）</label>
+              <div className="grid grid-cols-2 gap-2">
+                {SERVICE_PRESETS.map(p => (
+                  <button
+                    key={p.key}
+                    onClick={() => applyPreset(p)}
+                    className={`text-left px-3 py-2 rounded-sm border transition-all ${baseUrl === p.baseUrl ? 'border-accent bg-accent/8 shadow-[inset_0_0_0_1px_#b3402f]' : 'border-ink/15 hover:border-ink/35'}`}
+                  >
+                    <div className="text-[13px] font-medium">{p.label}</div>
+                    <div className="text-[10px] text-ink/50 mt-0.5 truncate font-mono">{p.baseUrl}</div>
+                    <div className="text-[10px] text-ink/40 mt-0.5">{p.note}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Base URL */}
             <div>
               <label className="block text-[12px] font-semibold tracking-widest text-steel mb-1.5">🌐 API Base URL</label>
               <input
                 className="input-base font-mono"
                 value={baseUrl}
-                onChange={e => setBaseUrl(e.target.value)}
-                placeholder="https://api.openai.com/v1"
+                onChange={e => { setBaseUrl(e.target.value); setModels(null); }}
+                placeholder="https://api.ltzy.top/v1"
                 spellCheck={false}
               />
               <p className="text-[11px] text-ink/45 mt-1">
-                兼容 DeepSeek / 硅基流动 / Moonshot / OpenRouter / Ollama（如 http://localhost:11434/v1）等。
-                未填 /v1 时自动补全。
+                兼容 AQUA 公益AI / DeepSeek / 硅基流动 / Moonshot / OpenRouter / Ollama（如 http://localhost:11434/v1）等 OpenAI 格式服务。未填 /v1 时自动补全。
               </p>
             </div>
 
@@ -70,7 +129,7 @@ export default function ApiSettingsModal({ open, onClose }: { open: boolean; onC
                 type="password"
                 value={apiKey}
                 onChange={e => setApiKey(e.target.value)}
-                placeholder="sk-..."
+                placeholder="sk-...（AQUA 在控制台 acu.ltzy.top 的密钥管理创建）"
                 autoComplete="off"
               />
               <p className="text-[11px] text-ink/45 mt-1">仅保存在浏览器 localStorage，请求由浏览器直连你的 Endpoint，绝不上传任何第三方服务器。</p>
@@ -84,18 +143,53 @@ export default function ApiSettingsModal({ open, onClose }: { open: boolean; onC
                 list="model-suggestions"
                 value={model}
                 onChange={e => setModel(e.target.value)}
-                placeholder="gpt-4o"
+                placeholder="minimaxai/minimax-m3"
                 spellCheck={false}
               />
               <datalist id="model-suggestions">
                 {MODEL_SUGGESTIONS.map(m => <option key={m} value={m} />)}
               </datalist>
               <div className="flex flex-wrap gap-1.5 mt-1.5">
-                {MODEL_SUGGESTIONS.slice(0, 6).map(m => (
+                {MODEL_SUGGESTIONS.slice(0, 8).map(m => (
                   <button key={m} onClick={() => setModel(m)} className="px-2 py-0.5 rounded-sm text-[11px] border border-ink/15 hover:border-accent hover:text-accent transition-colors">
                     {m}
                   </button>
                 ))}
+              </div>
+
+              {/* 获取模型列表 */}
+              <div className="mt-2.5 rounded-sm border border-dashed border-ink/25 px-3 py-2.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[12px] font-semibold text-steel">📚 获取可用模型</span>
+                  <button className="btn-ghost !px-3 !py-1 text-[11.5px]" disabled={modelsLoading} onClick={loadModels}>
+                    {modelsLoading ? '⏳ 加载中…' : '从服务端拉取列表'}
+                  </button>
+                  {models && <span className="text-[11px] text-moss">共 {models.length} 个模型</span>}
+                </div>
+                {modelsError && <p className="text-[11px] text-accent mt-1.5">❌ {modelsError}</p>}
+                {models && models.length > 0 && (
+                  <>
+                    <input
+                      className="input-base !py-1 !px-2 !text-[11.5px] mt-2"
+                      placeholder="🔍 搜索模型（输入关键词过滤）"
+                      value={modelFilter}
+                      onChange={e => setModelFilter(e.target.value)}
+                    />
+                    <div className="mt-1.5 max-h-36 overflow-y-auto pr-1 space-y-1">
+                      {filteredModels.length === 0 && <p className="text-[11px] text-ink/40">无匹配模型</p>}
+                      {filteredModels.slice(0, 80).map(m => (
+                        <button
+                          key={m}
+                          onClick={() => { setModel(m); }}
+                          className={`w-full text-left px-2 py-1 rounded-sm text-[11.5px] font-mono border transition-all ${model === m ? 'border-accent bg-accent/8 text-accent' : 'border-ink/10 hover:border-ink/30'}`}
+                        >
+                          {m}{model === m && ' ✓'}
+                        </button>
+                      ))}
+                      {filteredModels.length > 80 && <p className="text-[10px] text-ink/40">…仅显示前 80 个，可用搜索精确查找</p>}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -170,6 +264,7 @@ export default function ApiSettingsModal({ open, onClose }: { open: boolean; onC
               </div>
               <p className="text-[11px] text-ink/45 mt-2">
                 测试将向 {normalizeBaseUrl(baseUrl)}/chat/completions 发送一条最小请求，验证 Base URL、Key 与 Model 三要素。
+                错误码参考：401 Key 无效 · 403 IP 被风控 · 429 请求频繁 · 500 服务器错误。
               </p>
             </div>
 
@@ -177,7 +272,7 @@ export default function ApiSettingsModal({ open, onClose }: { open: boolean; onC
             <div className="flex items-center justify-between border-t border-ink/10 pt-4">
               <Chip tone="steel">🛡️ 密钥仅存 localStorage · 直连 Endpoint · 不经第三方</Chip>
               <div className="flex gap-2">
-                <button className="btn-ghost" onClick={() => { setConfig({ baseUrl: 'https://api.openai.com/v1', apiKey: '', model: 'gpt-4o', temperature: 0.7, maxTokens: 2048 }); setBaseUrl('https://api.openai.com/v1'); setApiKey(''); setModel('gpt-4o'); setTemperature(0.7); setMaxTokens(2048); clearTest(); }}>重置</button>
+                <button className="btn-ghost" onClick={() => { setBaseUrl('https://api.ltzy.top/v1'); setApiKey(''); setModel('minimaxai/minimax-m3'); setTemperature(0.7); setMaxTokens(2048); setModels(null); setModelsError(''); clearTest(); }}>重置为 AQUA</button>
                 <button className="btn-primary" onClick={() => { saveAll(); onClose(); }}>✅ 保存并关闭</button>
               </div>
             </div>

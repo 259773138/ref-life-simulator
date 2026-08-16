@@ -106,8 +106,11 @@ export async function chatCompletion(cfg: ApiConfig, messages: ChatMessage[], op
 
   const res = await httpPostJson(url, payload, headers);
   if (!res.ok) {
-    if (res.status === 401 || res.status === 403) {
-      throw new ApiError('鉴权失败：API Key 无效或无权限（401/403）。请检查 Key 与模型权限。', { status: res.status, code: 'AUTH' });
+    if (res.status === 401) {
+      throw new ApiError('鉴权失败：API Key 无效（401）。请检查 Key 是否正确，或到服务商控制台重新生成。', { status: res.status, code: 'AUTH' });
+    }
+    if (res.status === 403) {
+      throw new ApiError('请求被拒绝（403）：IP 被封禁或触发风控，可稍后重试或联系服务商。', { status: res.status, code: 'FORBIDDEN' });
     }
     if (res.status === 404) {
       throw new ApiError('接口地址 404：请确认 Base URL 是否正确（应指向 /v1 或 /v1 根路径，如 https://api.openai.com/v1）。', { status: res.status, code: 'NOT_FOUND' });
@@ -146,5 +149,39 @@ export async function testConnection(cfg: ApiConfig): Promise<{ ok: true; reply:
     return { ok: true, reply: res.content.slice(0, 80), model: res.model };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/** 获取可用模型列表（GET /v1/models，按 AQUA 文档：无需认证也可访问） */
+export async function fetchModels(cfg: ApiConfig): Promise<string[]> {
+  const base = normalizeBaseUrl(cfg.baseUrl);
+  const url = `${base}/models`;
+  const headers: Record<string, string> = {};
+  if (cfg.apiKey.trim()) headers.Authorization = `Bearer ${cfg.apiKey.trim()}`;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30000);
+  try {
+    const res = await fetch(url, { headers, signal: controller.signal });
+    if (!res.ok) {
+      if (res.status === 404) throw new ApiError('接口 404：该服务不支持 /v1/models 端点。', { status: 404, code: 'NOT_FOUND' });
+      if (res.status === 403) throw new ApiError('403：IP 被封禁或触发风控。', { status: 403, code: 'FORBIDDEN' });
+      throw await parseError(res, `模型列表请求失败（HTTP ${res.status}）`);
+    }
+    const data = await res.json();
+    const ids = (Array.isArray(data?.data) ? data.data : [])
+      .map((m: any) => m?.id)
+      .filter((x: any): x is string => typeof x === 'string' && x.length > 0);
+    if (!ids.length) throw new ApiError('响应格式异常：未解析到模型列表。', { code: 'BAD_FORMAT' });
+    return ids;
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+    const e = err as Error;
+    if (/Failed to fetch|NetworkError|Load failed/i.test(e.message)) {
+      throw new ApiError('无法连接到该地址（网络/CORS 问题）。', { code: 'NETWORK' });
+    }
+    throw new ApiError(`网络错误：${e.message}`, { code: 'NETWORK' });
+  } finally {
+    clearTimeout(timer);
   }
 }

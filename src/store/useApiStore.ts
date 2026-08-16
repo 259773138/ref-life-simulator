@@ -9,17 +9,24 @@ import type { ApiConfig } from '../types/game';
 import { testConnection } from '../lib/ai-client';
 
 export const MODEL_SUGGESTIONS = [
+  'minimaxai/minimax-m3',
+  'deepseek-ai/deepseek-v4-pro',
   'gpt-4o',
   'gpt-4o-mini',
   'claude-3-5-sonnet',
   'deepseek-chat',
-  'deepseek-reasoner',
   'qwen-max',
-  'qwen-plus',
-  'moonshot-v1-8k',
   'glm-4-plus',
   'openrouter/auto',
   'llama3.1:8b',
+];
+
+/** 预设服务（一键填充） */
+export const SERVICE_PRESETS = [
+  { key: 'aqua', label: '💠 AQUA 公益AI', baseUrl: 'https://api.ltzy.top/v1', model: 'minimaxai/minimax-m3', note: '公益免费 · OpenAI 兼容 · 模型多选' },
+  { key: 'openai', label: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o', note: '官方服务' },
+  { key: 'deepseek', label: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat', note: '国产大模型' },
+  { key: 'ollama', label: '📦 Ollama 本地', baseUrl: 'http://localhost:11434/v1', model: 'llama3.1:8b', note: '本地运行，无需 Key' },
 ];
 
 export type EngineMode = 'auto' | 'llm' | 'local';
@@ -40,9 +47,9 @@ interface ApiState {
 }
 
 const DEFAULT_CONFIG: ApiConfig = {
-  baseUrl: 'https://api.openai.com/v1',
+  baseUrl: 'https://api.ltzy.top/v1',
   apiKey: '',
-  model: 'gpt-4o',
+  model: 'minimaxai/minimax-m3',
   temperature: 0.7,
   maxTokens: 2048,
 };
