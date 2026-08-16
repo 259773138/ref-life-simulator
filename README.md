@@ -1,5 +1,8 @@
 # 🌆 Ref 现代人生模拟器 V9.0.13
 
+> ## 🔗 线上地址：**https://259773138.github.io/ref-life-simulator/**（GitHub Pages）
+> 源码仓库：https://github.com/259773138/ref-life-simulator （main=源码 / gh-pages=构建产物）
+
 单人月令回合制 · 开放世界人生模拟器 Web 版。严格依据《Ref 现代人生模拟器 · 完整游戏设定 V9.0.13》构建。
 
 每月 7 个行动点，从 16-25 岁开局，经历求学、求职、恋爱、婚姻、生育、买房、创业、养老的完整人生。世界独立运转，叙事由你的行动驱动。
