@@ -10,14 +10,16 @@ import { testConnection } from '../lib/ai-client';
 
 export const MODEL_SUGGESTIONS = [
   'minimaxai/minimax-m3',
-  'deepseek-ai/deepseek-v4-pro',
+  'acu/auto-models',
+  'acu/deepseek-v4-flash',
+  'deepseek-ai/deepseek-v4-flash-0731',
+  'z-ai/glm-5.2',
+  'openai/gpt-oss-120b',
+  'meta/llama-3.3-70b-instruct',
   'gpt-4o',
-  'gpt-4o-mini',
   'claude-3-5-sonnet',
   'deepseek-chat',
   'qwen-max',
-  'glm-4-plus',
-  'openrouter/auto',
   'llama3.1:8b',
 ];
 
